@@ -19,7 +19,7 @@ def socketListening(data, addr):
 
             # Kirim ACK ke user. Lalu, terima paket dari user
             
-            nextData, nextAddr = sock.recvfrom(66592)
+            nextData, nextAddr = sock.recvfrom(65592)
             if (utility.getDataType(data) == 2):
                 end = True
 
@@ -55,9 +55,10 @@ log = logging.getLogger("server").setLevel(logging.DEBUG)
 
 while True:
     try:
-        data, addr = sock.recvfrom(66592)
+        data, addr = sock.recvfrom(65592)
         socketThread = threading.Thread(target=socketListening, args=(data, addr))
         socketThread.start()
+    
     except socket.error as msg:
         print("Socket threading failed. Error code:", str(msg[0]), "; Message", msg[1])
         sys.exit()
