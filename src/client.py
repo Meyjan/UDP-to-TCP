@@ -6,10 +6,7 @@ import utility
 
 # Sending file per thread
 def sendFile(arr_file, sock, dataId):
-    dataArray = []
-    for single_file in arr_file:
-        dataArray.append(utility.fileSplitting(single_file))
-    
+    dataArray = utility.fileSplitting(arr_file)
     for i in range(len(dataArray) - 1):
         sendPacket(dataArray[i], sock, dataId, i)
     sendPacket(dataArray[len(dataArray) - 1], sock, dataId, len(dataArray) - 1)
@@ -18,6 +15,9 @@ def sendFile(arr_file, sock, dataId):
 def sendPacket(data, sock, dataId, dataSequence):
     # Setting data length
     dataLength = utility.lengthCount(data)
+    
+
+
     # Setting checksum
     sock.sendto(data.encode(), (UDP_IP, UDP_PORT))
 

@@ -1,3 +1,5 @@
+import copy
+
 # Receiver-side
 # Classification of input
 def packageOpening(data):
@@ -22,15 +24,16 @@ def fileSplitting(data):
         fileChunk = bigfile.read(chuckSize)
         while fileChunk:
             result.append(fileChunk)
-            fileChunk = bigfile.read(65536)
+            fileChunk = bigfile.read(chuckSize)
     return result
 
 # Counting data length
 def lengthCount(data):
+    data2 = copy.deepcopy(data)
     count = 0
-    while (data):
+    while (data2):
         count += 1
-        data >>= 1
+        data2 >>= 8
     return count
 
 # Setting the checksum for data
