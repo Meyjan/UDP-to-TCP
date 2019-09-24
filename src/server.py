@@ -7,54 +7,65 @@ import logging
 import utility
 
 # Process that a thread should do once receiving a data from outside
-def socketListening(packet, addr, udp_ip, udp_port):
-    print("Socket listening")
+def socketListening(packet, addr):
+    # Socket listenting 
+    print("Socket listening addr", addr)
     end = False
+
+    # Getting packet and address of sender
+    UDP_IP = addr[0]
+    UDP_PORT = addr[1]
     nextPacket = packet
-    
-    f = open('received/received.pdf','wb')
 
     dataId = utility.getPacketID(packet)
-    nextAddr = (udp_ip, (udp_port + (2 * dataId) + 1))
     newSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    newSock.bind((udp_ip, (udp_port + (2 * dataId) + 2)))
-    print(udp_port + (2 * dataId) + 2)
+    newSock.bind((UDP_IP, (UDP_PORT + 1)))
+    newSock.settimeout(5)
+
+    print("Created port on:", (UDP_PORT + 1))
+    
+    nextAddr = addr
+
+    print(utility.getPacketType(nextPacket))
 
     if utility.getPacketType(nextPacket) == 0:
+
         while not end:
-            # Simpan data-data yang dibutuhkan di <sini>
-            print("data Received")
+            print("Data Received. id = ", utility.getPacketID(nextPacket), "sequence = ", utility.getPacketSequenceNumber(nextPacket))
 
             checksum = utility.getChecksum(nextPacket)
             print("Checksum: ",checksum)
             packetArray = bytearray(nextPacket)
             packetArray[5] = 0x00
             packetArray[6] = 0x00
+
+            # Sending ACK if file truly get
             if(utility.countCheckSum(packetArray) == checksum):
-                # Kirim ACK ke user. Lalu, terima paket dari user
                 print("Checksum correct")
                 newSock.sendto(bytes(utility.returnACK(nextPacket)), nextAddr)
             else:
                 print("Count checksum = ",utility.countCheckSum(packetArray))
                 print("Checksum incorrect")
 
-            nextPacket, _ = newSock.recvfrom(32775)
+            nextPacket, _ = newSock.recvfrom(utility.MAX_PACKET_SIZE)
             if (utility.getPacketType(nextPacket) == 2):
                 end = True
-
-    # Responi data-data yang diberikan di <sini>
-    print("Done bitcheese")
     
     # Kirim FIN-ACK ke sender
-    newSock.sendto(bytes(utility.returnACK(nextPacket)),nextAddr)
+    finale = utility.returnACK(nextPacket)
+    print("Finale address: ", nextAddr)
+    print("File type: ", utility.getPacketType(finale))
+    newSock.sendto(bytes(finale),nextAddr)
             
     return 0
 
-UDP_IP = "192.168.43.184"
+#----------------------------------------------------------------------------------------------------------------#
+# Main program
+
+UDP_IP = "192.168.1.14"
 print("Socket Configured, IP = ", UDP_IP)
 UDP_PORT = int(input("Masukkan port:"))
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
 
 # Binding socket
 try:
@@ -62,16 +73,18 @@ try:
 except socket.error as msg:
     print("Socket binding failed")
     sys.exit()
-print("Socket Bound")
+print("Socket Bound at", UDP_PORT)
 
 # Create server log
 log = logging.getLogger("server").setLevel(logging.DEBUG)
 
-
+# Running a server
 while True:
     try:
-        data, addr = sock.recvfrom(32775)
-        socketThread = threading.Thread(target=socketListening, args=(data, addr, UDP_IP, UDP_PORT))
+        print("Called")
+        data, addr = sock.recvfrom(utility.MAX_PACKET_SIZE)
+        print("Received from ", addr)
+        socketThread = threading.Thread(target=socketListening, args=(data, addr))
         socketThread.start()
     
     except socket.error as msg:

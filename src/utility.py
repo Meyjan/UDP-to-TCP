@@ -1,6 +1,6 @@
 import copy
 import sys
-MAX_PACKET_SIZE = 32775
+MAX_PACKET_SIZE = 32776
 # Receiver-side
 # Classification of input
 def packageOpening(data):
@@ -15,7 +15,7 @@ def packageOpening(data):
 # Sender-side
 # Splitting data into packets if bigger than packet default size
 def fileSplitting(data):
-    chuckSize = 32775
+    chuckSize = 32768
     result = []
     with open(data, "rb") as bigfile:
         fileChunk = bigfile.read(chuckSize)
@@ -86,19 +86,24 @@ def createPacketWithoutCheckSum(pType, pId, pSequenceNum, pData) :
     packet += bytearray([0])
 
     #Packet Data
-    packet += bytearray(pData,'utf8')
+    packet += pData
     return packet
 
 def countCheckSum(packet) :
+    toDelete = False
+
     if(isPacketOdd(packet)):
         packet += bytearray([0])
+        toDelete = True
 
     checksum = (packet[0] << 8) + packet[1]
 
     for i in range(2, (len(packet) - 1) ,2):
         operand = (packet[i] << 8) + packet[i + 1]
         checksum ^= operand
-
+    if toDelete:
+        packet = packet[:-1]
+    
     return checksum
     
 def createPacketWithChecksum(packet,checksum) :
@@ -117,21 +122,21 @@ def isPacketOdd(packet):
 
 def getPacketID(packet):
     packetByteArr = bytearray(packet)
-    pID = packetByteArr[0] % 256
+    pID = packetByteArr[0] % 16
     return pID
 
 def getPacketType(packet):
     packetByteArr = bytearray(packet)
-    pType = packetByteArr[0] >> 4
+    pType = packetByteArr[0] // 16
     return pType
 
 def getPacketSequenceNumber(packet):
     packetByteArr = bytearray(packet)
-    return packetByteArr[1] << 8 + packetByteArr[2]
+    return packetByteArr[1] * 256 + packetByteArr[2]
 
 def getLengthData(packet):
     packetByteArr = bytearray(packet)
-    return packetByteArr[3] << 8 + packetByteArr[4]
+    return packetByteArr[3] * 256 + packetByteArr[4]
 
 def getChecksum(packet):
     packetByteArr = bytearray(packet)
@@ -162,6 +167,6 @@ def returnACK(packet):
 
     packet = packet[0:7]
     packet = bytearray(packet)
-    packet[0] = (int(packet[0]) % 256) + (rType << 4)
+    packet[0] = (int(packet[0]) % 16) + (rType * 16)
 
     return bytes(packet)

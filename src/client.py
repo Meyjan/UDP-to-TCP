@@ -12,57 +12,58 @@ TYPE_FIN_ACK = 0x3
 
 
 # Sending file per thread
-def sendFile(arr_file, udp_ip, udp_port, dataId, sock):
-    print("sendFile: called")
+def sendFile(arr_file, UDP_IP, UDP_PORT, dataId):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    new_port = UDP_PORT + 2 * dataId + 1
+    sock.bind((UDP_IP, new_port))
+    sock.settimeout(6)
+
+    print("Created port on:", new_port)
 
     dataArray = utility.fileSplitting(arr_file)
+    print(len(dataArray))
 
-    if (len(dataArray) == 1):
-        sendPacket(arr_file[0], sock, dataId, 0, TYPE_FIN)
+    if (len(dataArray) <= 1):
+        sendPacket(dataArray[0], sock, dataId, 0, TYPE_FIN, (UDP_IP, UDP_PORT))
     else:
-        sendPacket(arr_file[0], sock, dataId, 0, TYPE_DATA)
-    
-    new_port = udp_port + 2*dataId + 1
-    print(new_port)
-    newSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    newSock.bind((udp_ip, new_port))
-    newSock.settimeout(5)
-
-    targetPort = socket.socket(socket.AF_INET, socket.S)
-    for i in range(1, len(dataArray) - 1):
-        sendPacket(dataArray[i], newSock, dataId, i, TYPE_DATA)
-    sendPacket(dataArray[len(dataArray) - 1], newSock, dataId, len(dataArray) - 1, TYPE_FIN)
+        sendPacket(dataArray[0], sock, dataId, 0, TYPE_DATA, (UDP_IP, UDP_PORT))
+        target_port = UDP_PORT + 2 * dataId + 2
+        for i in range(1, len(dataArray) - 1):
+            sendPacket(dataArray[i], sock, dataId, i, TYPE_DATA, (UDP_IP, target_port))
+        sendPacket(dataArray[len(dataArray) - 1], sock, dataId, len(dataArray) - 1, TYPE_FIN, target_port)
 
 
 # Sending packet per thread
-def sendPacket(data, sock, dataId, dataSequence, dataType):
+def sendPacket(data, sock, dataId, dataSequence, dataType, addr):
+    # Packet creation
     packet = utility.createPacketWithoutCheckSum(dataType, dataId, dataSequence, data)
     checksum = utility.countCheckSum(packet)
-    print("count Checksum : ",checksum)
     utility.createPacketWithChecksum(packet, checksum)
-    print("getChecksum : ",utility.getChecksum(packet))
+
     # Run sending files
     for i in range(10):
-        print("Try", i)
-        sock.sendto(bytes(packet), (UDP_IP, UDP_PORT))
+        # Sending file procedure
+        print("Packet type: ", utility.getPacketType(packet))
+        sent_packet = bytes(packet)
+        sock.sendto(bytes(packet), addr)
         message = 0xFF
-        message, addr = sock.recvfrom(utility.MAX_PACKET_SIZE)
+        message, sender_addr = sock.recvfrom(utility.MAX_PACKET_SIZE)
         
         if message != 0xFF:
-            if utility.getPacketType(message) == TYPE_ACK:
+            if utility.getPacketType(message) == dataType + 1:
                 break
             else:
                 print("Packet id:", dataId, "sequence: ", dataSequence, "not acknowledged")
         else:
             print("Packet id:", dataId, "sequence: ", dataSequence, "not received")
     
-    print("Packet id:", dataId, "sequence: ", dataSequence, "sent")
+    print("Packet id:", dataId, "; sequence:", dataSequence, "sent")
 
 
 # Configuring IP address and port
 hostname = socket.gethostname()
 UDP_IP = input("Insert target IP address:")
-UDP_PORT = int(input("Insert target port: "))
+UDP_PORT = int(input("Insert target port:"))
 
 print("UDP target IP:", UDP_IP)
 print("UDP target port: ", UDP_PORT)
@@ -78,12 +79,10 @@ for i in range(files_num):
     selected_file = input("Insert file target relative to this file : ")
     arr_files.append(selected_file)
 
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-# sock.bind((UDP_IP, UDP_PORT))
+print()
 print("Socket Bounded")
 
 # Connecting to socket
 for i in range(len(arr_files)):
-    socketThread = threading.Thread(target = sendFile, args = (arr_files[i], UDP_IP, UDP_PORT, i, sock))
+    socketThread = threading.Thread(target = sendFile, args = (arr_files[i], UDP_IP, UDP_PORT, i))
     socketThread.start()
