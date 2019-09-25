@@ -27,6 +27,7 @@ def socketListening(packet, addr):
     nextAddr = addr
 
     print(utility.getPacketType(nextPacket))
+    copiedFile = bytearray()
 
     if utility.getPacketType(nextPacket) == 0:
 
@@ -43,6 +44,7 @@ def socketListening(packet, addr):
             if(utility.countCheckSum(packetArray) == checksum):
                 print("Checksum correct")
                 newSock.sendto(bytes(utility.returnACK(nextPacket)), nextAddr)
+                copiedFile += utility.getData(nextPacket)
             else:
                 print("Count checksum = ",utility.countCheckSum(packetArray))
                 print("Checksum incorrect")
@@ -51,18 +53,40 @@ def socketListening(packet, addr):
             if (utility.getPacketType(nextPacket) == 2):
                 end = True
     
+    end = False
+    while not end:
+        print("Data Received. id = ", utility.getPacketID(nextPacket), "sequence = ", utility.getPacketSequenceNumber(nextPacket))
+
+        checksum = utility.getChecksum(nextPacket)
+        print("Checksum: ",checksum)
+        packetArray = bytearray(nextPacket)
+        packetArray[5] = 0x00
+        packetArray[6] = 0x00
+
+        # Sending ACK if file truly get
+        if(utility.countCheckSum(packetArray) == checksum):
+            print("Checksum correct")
+            copiedFile += utility.getData(nextPacket)
+            end = True
+        else:
+            print("Count checksum = ",utility.countCheckSum(packetArray))
+            print("Checksum incorrect")
+
     # Kirim FIN-ACK ke sender
     finale = utility.returnACK(nextPacket)
     print("Finale address: ", nextAddr)
     print("File type: ", utility.getPacketType(finale))
     newSock.sendto(bytes(finale),nextAddr)
+    file = open('received/received.pdf','wb+')
+    file.write(bytes(copiedFile))
+    file.close()
             
     return 0
 
 #----------------------------------------------------------------------------------------------------------------#
 # Main program
 
-UDP_IP = "192.168.43.33"
+UDP_IP = "192.168.43.184"
 print("Socket Configured, IP = ", UDP_IP)
 UDP_PORT = int(input("Masukkan port:"))
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
