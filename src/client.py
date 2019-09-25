@@ -30,20 +30,28 @@ def sendFile(arr_file, UDP_IP, UDP_PORT, dataId):
         target_port = UDP_PORT + 2 * dataId + 2
         for i in range(1, len(dataArray) - 1):
             sendPacket(dataArray[i], sock, dataId, i, TYPE_DATA, (UDP_IP, target_port))
-        sendPacket(dataArray[len(dataArray) - 1], sock, dataId, len(dataArray) - 1, TYPE_FIN, target_port)
+        sendPacket(dataArray[len(dataArray) - 1], sock, dataId, len(dataArray) - 1, TYPE_FIN, (UDP_IP, target_port))
 
 
 # Sending packet per thread
 def sendPacket(data, sock, dataId, dataSequence, dataType, addr):
     # Packet creation
     packet = utility.createPacketWithoutCheckSum(dataType, dataId, dataSequence, data)
+
+    isOdd = False
+    if (utility.isPacketOdd(packet)):
+        isOdd = True
+    
     checksum = utility.countCheckSum(packet)
+
+    if (isOdd):
+        packet = packet[:-1]
+    
     utility.createPacketWithChecksum(packet, checksum)
 
     # Run sending files
     for i in range(10):
         # Sending file procedure
-        print("Packet type: ", utility.getPacketType(packet))
         sent_packet = bytes(packet)
         sock.sendto(bytes(packet), addr)
         message = 0xFF

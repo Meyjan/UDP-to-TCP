@@ -1,6 +1,6 @@
 import copy
 import sys
-MAX_PACKET_SIZE = 32776
+MAX_PACKET_SIZE = 32775
 # Receiver-side
 # Classification of input
 def packageOpening(data):
@@ -95,7 +95,7 @@ def countCheckSum(packet) :
     if(isPacketOdd(packet)):
         packet += bytearray([0])
         toDelete = True
-
+    
     checksum = (packet[0] << 8) + packet[1]
 
     for i in range(2, (len(packet) - 1) ,2):
@@ -140,8 +140,6 @@ def getLengthData(packet):
 
 def getChecksum(packet):
     packetByteArr = bytearray(packet)
-    print("index 5",packetByteArr[5])
-    print("index 6", packetByteArr[6])
     return packetByteArr[5] * 256 + packetByteArr[6]
 
 def getData(packet):
