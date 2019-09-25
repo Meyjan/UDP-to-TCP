@@ -143,7 +143,7 @@ def getChecksum(packet):
     return packetByteArr[5] * 256 + packetByteArr[6]
 
 def getData(packet):
-    pData = packet[8:len(packet)]
+    pData = packet[7:len(packet)]
     return pData
 
 def removeChecksum(packet):
@@ -153,7 +153,7 @@ def removeChecksum(packet):
     return bytes(packetByteArr)
 
 def removeData(packet):
-    packet = packet[0:8]
+    packet = packet[0:7]
 
 def returnACK(packet):
     pType = getPacketType(packet)

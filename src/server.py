@@ -25,8 +25,6 @@ def socketListening(packet, addr):
     print("Created port on:", (UDP_PORT + 1))
     
     nextAddr = addr
-
-    print(utility.getPacketType(nextPacket))
     copiedFile = bytearray()
 
     if utility.getPacketType(nextPacket) == 0:
@@ -35,16 +33,15 @@ def socketListening(packet, addr):
             print("Data Received. id = ", utility.getPacketID(nextPacket), "sequence = ", utility.getPacketSequenceNumber(nextPacket))
 
             checksum = utility.getChecksum(nextPacket)
-            print("Checksum: ",checksum)
             packetArray = bytearray(nextPacket)
             packetArray[5] = 0x00
             packetArray[6] = 0x00
 
             # Sending ACK if file truly get
-            if(utility.countCheckSum(packetArray) == checksum):
-                print("Checksum correct")
-                newSock.sendto(bytes(utility.returnACK(nextPacket)), nextAddr)
+            if(utility.countCheckSum(packetArray) == checksum):                
+                newSock.sendto(bytes(utility.returnACK(nextPacket)), nextAddr)              
                 copiedFile += utility.getData(nextPacket)
+                
             else:
                 print("Count checksum = ",utility.countCheckSum(packetArray))
                 print("Checksum incorrect")
@@ -77,7 +74,7 @@ def socketListening(packet, addr):
     print("Finale address: ", nextAddr)
     print("File type: ", utility.getPacketType(finale))
     newSock.sendto(bytes(finale),nextAddr)
-    file = open('received/received.pdf','wb+')
+    file = open('received/received.pdf','wb')
     file.write(bytes(copiedFile))
     file.close()
             
