@@ -17,18 +17,64 @@ def socketListening(packet, addr):
     UDP_PORT = addr[1]
     nextPacket = packet
 
-    dataId = utility.getPacketID(packet)
     newSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    newSock.bind((UDP_IP, (UDP_PORT + 1)))
-    newSock.settimeout(5)
 
-    print("Created port on:", (UDP_PORT + 1))
-    
-    nextAddr = addr
-    copiedFile = bytearray()
+    try:
+        dataId = utility.getPacketID(packet)
+        newSock.bind((UDP_IP, (UDP_PORT + 1)))
+        newSock.settimeout(5)
 
-    if utility.getPacketType(nextPacket) == 0:
+        print("Created port on:", (UDP_PORT + 1))
 
+        nextAddr = addr
+
+        # Processing file name
+        fileName = utility.getData(packet)
+        print("File name = ", fileName)
+
+        checksum = utility.getChecksum(nextPacket)
+        packetArray = bytearray(nextPacket)
+        packetArray[5] = 0x00
+        packetArray[6] = 0x00
+
+        # Sending ACK if file truly get
+        if(utility.countCheckSum(packetArray) == checksum):                
+            newSock.sendto(bytes(utility.returnACK(nextPacket)), nextAddr)              
+        else:
+            print("Count checksum = ",utility.countCheckSum(packetArray))
+            print("Checksum incorrect")
+
+        nextPacket, _ = newSock.recvfrom(utility.MAX_PACKET_SIZE)
+        if (utility.getPacketType(nextPacket) == 2):
+            end = True
+        
+        
+        copiedFile = bytearray()
+
+        if utility.getPacketType(nextPacket) == 0:
+
+            while not end:
+                print("Data Received. id = ", utility.getPacketID(nextPacket), "sequence = ", utility.getPacketSequenceNumber(nextPacket))
+
+                checksum = utility.getChecksum(nextPacket)
+                packetArray = bytearray(nextPacket)
+                packetArray[5] = 0x00
+                packetArray[6] = 0x00
+
+                # Sending ACK if file truly get
+                if(utility.countCheckSum(packetArray) == checksum):                
+                    newSock.sendto(bytes(utility.returnACK(nextPacket)), nextAddr)              
+                    copiedFile += utility.getData(nextPacket)
+                    
+                else:
+                    print("Count checksum = ",utility.countCheckSum(packetArray))
+                    print("Checksum incorrect")
+
+                nextPacket, _ = newSock.recvfrom(utility.MAX_PACKET_SIZE)
+                if (utility.getPacketType(nextPacket) == 2):
+                    end = True
+        
+        end = False
         while not end:
             print("Data Received. id = ", utility.getPacketID(nextPacket), "sequence = ", utility.getPacketSequenceNumber(nextPacket))
 
@@ -38,57 +84,41 @@ def socketListening(packet, addr):
             packetArray[6] = 0x00
 
             # Sending ACK if file truly get
-            if(utility.countCheckSum(packetArray) == checksum):                
-                newSock.sendto(bytes(utility.returnACK(nextPacket)), nextAddr)              
+            if(utility.countCheckSum(packetArray) == checksum):
                 copiedFile += utility.getData(nextPacket)
-                
+                end = True
             else:
                 print("Count checksum = ",utility.countCheckSum(packetArray))
                 print("Checksum incorrect")
 
-            nextPacket, _ = newSock.recvfrom(utility.MAX_PACKET_SIZE)
-            if (utility.getPacketType(nextPacket) == 2):
-                end = True
-    
-    end = False
-    while not end:
-        print("Data Received. id = ", utility.getPacketID(nextPacket), "sequence = ", utility.getPacketSequenceNumber(nextPacket))
+        # Kirim FIN-ACK ke sender
+        finale = utility.returnACK(nextPacket)
+        newSock.sendto(bytes(finale),nextAddr)
 
-        checksum = utility.getChecksum(nextPacket)
-        print("Checksum: ",checksum)
-        packetArray = bytearray(nextPacket)
-        packetArray[5] = 0x00
-        packetArray[6] = 0x00
+        print(fileName)
+        fileName = "received/" + fileName.decode("utf-8")
+        file = open(fileName,'wb')
+        file.write(bytes(copiedFile))
+        file.close()
+        
+    except:
+        print("Error. Can't listen to the packet")
 
-        # Sending ACK if file truly get
-        if(utility.countCheckSum(packetArray) == checksum):
-            print("Checksum correct")
-            copiedFile += utility.getData(nextPacket)
-            end = True
-        else:
-            print("Count checksum = ",utility.countCheckSum(packetArray))
-            print("Checksum incorrect")
-
-    # Kirim FIN-ACK ke sender
-    finale = utility.returnACK(nextPacket)
-    print("Finale address: ", nextAddr)
-    print("File type: ", utility.getPacketType(finale))
-    newSock.sendto(bytes(finale),nextAddr)
-    file = open('received/received.jpg','wb')
-    file.write(bytes(copiedFile))
-    file.close()
+    finally:
+        print()
+        newSock.close()
             
     return 0
 
 #----------------------------------------------------------------------------------------------------------------#
 # Main program
 
-UDP_IP = "192.168.43.46"
+UDP_IP = "192.168.1.5"
 print("Socket Configured, IP = ", UDP_IP)
 UDP_PORT = int(input("Masukkan port:"))
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # Binding socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 try:
     sock.bind((UDP_IP, UDP_PORT))
 except socket.error as msg:
@@ -102,9 +132,8 @@ log = logging.getLogger("server").setLevel(logging.DEBUG)
 # Running a server
 while True:
     try:
-        print("Called")
+        print("Main socket is ready...")
         data, addr = sock.recvfrom(utility.MAX_PACKET_SIZE)
-        print("Received from ", addr)
         socketThread = threading.Thread(target=socketListening, args=(data, addr))
         socketThread.start()
     

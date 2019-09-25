@@ -2,6 +2,7 @@ import socket
 import os
 import threading
 import time
+import ntpath
 
 import utility
 
@@ -12,41 +13,64 @@ TYPE_FIN_ACK = 0x3
 
 # Sending file per thread
 def sendFile(arr_file, UDP_IP, UDP_PORT, dataId):
+
+    # Binding socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    new_port = UDP_PORT + 2 * dataId + 1
-    sock.bind((UDP_IP, new_port))
-    sock.settimeout(6)
+    try:
+        new_port = UDP_PORT + 2 * dataId + 1
+        sock.bind((UDP_IP, new_port))
+        sock.settimeout(6)
+        print("Created port on:", new_port)
+    except:
+        print("Couldn't create the port there")
+        sock.close()
+        return 0
 
-    print("Created port on:", new_port)
-
+    # Splitting files into packets
     dataArray = utility.fileSplitting(arr_file)
     manyPacket = len(dataArray)
     print(manyPacket)
 
-    # Initial call to print 0% progress
-    utility.printProgressBar(0, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
-    if (len(dataArray) <= 1):
-        sendPacket(dataArray[0], sock, dataId, 0, TYPE_FIN, (UDP_IP, UDP_PORT))
-        # Update Progress Bar
-        time.sleep(0.1)
-        utility.printProgressBar(manyPacket, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
-    else:
-        sendPacket(dataArray[0], sock, dataId, 0, TYPE_DATA, (UDP_IP, UDP_PORT))
+    # Initial package sending... Give name
+    fileName = ntpath.basename(arr_file)
+    print("Trying to send packet")
+
+    try:
+        # Sending file name
+        sendPacket(bytearray(fileName, "utf-8"), sock, dataId, 0, TYPE_DATA, (UDP_IP, UDP_PORT))
+        
+        # Initial call to print 0% progress
+        utility.printProgressBar(0, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        
         target_port = UDP_PORT + 2 * dataId + 2
-        for i in range(1, len(dataArray) - 1):
-            sendPacket(dataArray[i], sock, dataId, i, TYPE_DATA, (UDP_IP, target_port))
+        if (len(dataArray) <= 1):
+            sendPacket(dataArray[0], sock, dataId, 0, TYPE_FIN, (UDP_IP, target_port))
             # Update Progress Bar
             time.sleep(0.1)
-            utility.printProgressBar(i + 1, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
+            utility.printProgressBar(manyPacket, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        else:
+            sendPacket(dataArray[0], sock, dataId, 0, TYPE_DATA, (UDP_IP, target_port))
+            for i in range(1, len(dataArray) - 1):
+                sendPacket(dataArray[i], sock, dataId, i, TYPE_DATA, (UDP_IP, target_port))
+                # Update Progress Bar
+                time.sleep(0.1)
+                utility.printProgressBar(i + 1, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
-        sendPacket(dataArray[len(dataArray) - 1], sock, dataId, len(dataArray) - 1, TYPE_FIN, (UDP_IP, target_port))
-        # Update Progress Bar
-        time.sleep(0.1)
-        utility.printProgressBar(manyPacket, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
+            sendPacket(dataArray[len(dataArray) - 1], sock, dataId, len(dataArray) - 1, TYPE_FIN, (UDP_IP, target_port))
+            # Update Progress Bar
+            time.sleep(0.1)
+            utility.printProgressBar(manyPacket, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    except:
+        print("Packet sending failed")
+    finally:
+        sock.close()
+
+    
 
 
 # Sending packet per thread
 def sendPacket(data, sock, dataId, dataSequence, dataType, addr):
+
     # Packet creation
     packet = utility.createPacketWithoutCheckSum(dataType, dataId, dataSequence, data)
 
@@ -60,6 +84,7 @@ def sendPacket(data, sock, dataId, dataSequence, dataType, addr):
         packet = packet[:-1]
     
     utility.createPacketWithChecksum(packet, checksum)
+    
 
     # Run sending files
     for i in range(10):
@@ -74,8 +99,10 @@ def sendPacket(data, sock, dataId, dataSequence, dataType, addr):
                 break
             else:
                 print("Packet id:", dataId, "sequence: ", dataSequence, "not acknowledged")
+                time.sleep(2)
         else:
             print("Packet id:", dataId, "sequence: ", dataSequence, "not received")
+            time.sleep(2)
     
     # print("Packet id:", dataId, "; sequence:", dataSequence, "sent")
 
@@ -100,7 +127,6 @@ for i in range(files_num):
     arr_files.append(selected_file)
 
 print()
-print("Socket Bounded")
 
 # Connecting to socket
 for i in range(len(arr_files)):
