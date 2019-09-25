@@ -74,7 +74,7 @@ def socketListening(packet, addr):
     print("Finale address: ", nextAddr)
     print("File type: ", utility.getPacketType(finale))
     newSock.sendto(bytes(finale),nextAddr)
-    file = open('received/received.pdf','wb')
+    file = open('received/received.jpg','wb')
     file.write(bytes(copiedFile))
     file.close()
             
@@ -83,7 +83,7 @@ def socketListening(packet, addr):
 #----------------------------------------------------------------------------------------------------------------#
 # Main program
 
-UDP_IP = "192.168.43.184"
+UDP_IP = "192.168.43.46"
 print("Socket Configured, IP = ", UDP_IP)
 UDP_PORT = int(input("Masukkan port:"))
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

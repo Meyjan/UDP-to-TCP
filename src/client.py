@@ -10,7 +10,6 @@ TYPE_ACK = 0x1
 TYPE_FIN = 0x2
 TYPE_FIN_ACK = 0x3
 
-
 # Sending file per thread
 def sendFile(arr_file, UDP_IP, UDP_PORT, dataId):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -21,16 +20,29 @@ def sendFile(arr_file, UDP_IP, UDP_PORT, dataId):
     print("Created port on:", new_port)
 
     dataArray = utility.fileSplitting(arr_file)
-    print(len(dataArray))
+    manyPacket = len(dataArray)
+    print(manyPacket)
 
+    # Initial call to print 0% progress
+    utility.printProgressBar(0, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
     if (len(dataArray) <= 1):
         sendPacket(dataArray[0], sock, dataId, 0, TYPE_FIN, (UDP_IP, UDP_PORT))
+        # Update Progress Bar
+        time.sleep(0.1)
+        utility.printProgressBar(manyPacket, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
     else:
         sendPacket(dataArray[0], sock, dataId, 0, TYPE_DATA, (UDP_IP, UDP_PORT))
         target_port = UDP_PORT + 2 * dataId + 2
         for i in range(1, len(dataArray) - 1):
             sendPacket(dataArray[i], sock, dataId, i, TYPE_DATA, (UDP_IP, target_port))
+            # Update Progress Bar
+            time.sleep(0.1)
+            utility.printProgressBar(i + 1, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
+
         sendPacket(dataArray[len(dataArray) - 1], sock, dataId, len(dataArray) - 1, TYPE_FIN, (UDP_IP, target_port))
+        # Update Progress Bar
+        time.sleep(0.1)
+        utility.printProgressBar(manyPacket, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
 
 # Sending packet per thread
@@ -65,7 +77,7 @@ def sendPacket(data, sock, dataId, dataSequence, dataType, addr):
         else:
             print("Packet id:", dataId, "sequence: ", dataSequence, "not received")
     
-    print("Packet id:", dataId, "; sequence:", dataSequence, "sent")
+    # print("Packet id:", dataId, "; sequence:", dataSequence, "sent")
 
 
 # Configuring IP address and port
