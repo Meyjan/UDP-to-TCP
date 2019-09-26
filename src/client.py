@@ -23,14 +23,16 @@ def sendFile(arr_file, UDP_IP, UDP_PORT, dataId):
     fileName = ntpath.basename(arr_file)
     print("Trying to send packet")
 
-    # try:
+    #try:
     # Binding socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(5)
     i = 0
     while i < 20:
         try:
-            sock.bind((UDP_IP, 5021 + i + dataId))
-            sock.settimeout(5)
+            address = (UDP_IP, 5021 + i + dataId)
+            print("Trying to bind to", address)
+            sock.bind(address)
             break
         except:
             i += 5
@@ -39,9 +41,11 @@ def sendFile(arr_file, UDP_IP, UDP_PORT, dataId):
         print("Socket is full. Unable to send file:", (dataId + 1))
     
     print("Socket is set")
-
+    
+    if (data == )
     # Sending file name
-    message = sendPacket(bytearray(fileName, "utf-8"), sock, dataId, 0, TYPE_DATA, (UDP_IP, UDP_PORT))
+    packet = createPacket(TYPE_DATA,dataId,0,bytearray(fileName,"utf-8"))
+    message = sendPacket(TYPE_DATA, packet, sock, (UDP_IP, UDP_PORT))
     print("Package is sending")
     target_port = utility.getData(message)
     target_port = int(target_port[0]) * 256 + int(target_port[1])
@@ -68,17 +72,31 @@ def sendFile(arr_file, UDP_IP, UDP_PORT, dataId):
         # Update Progress Bar
         time.sleep(0.1)
         utility.printProgressBar(manyPacket, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
-    # except:
-    #     print("Packet sending failed")
-    # finally:
-    #     sock.close()
+    sock.close()
 
     
 
 
 # Sending packet per thread
-def sendPacket(data, sock, dataId, dataSequence, dataType, addr):
+def sendPacket(dataType, packet, sock, addr):
+    # Sending file procedure
+    sent_packet = bytes(packet)
+    sock.sendto(bytes(packet), addr)
+    message = 0xFF
+    message, sender_addr = sock.recvfrom(utility.MAX_PACKET_SIZE)
+    
+    if message != 0xFF:
+        if utility.getPacketType(message) == dataType + 1:
+            return message
+        else:
+            print("Packet id: not acknowledged")
+            time.sleep(2)
+    else:
+        print("Packet id:not received")
+        time.sleep(2)
 
+
+def createPacket(dataType, dataId, dataSequence, data):
     # Packet creation
     packet = utility.createPacketWithoutCheckSum(dataType, dataId, dataSequence, data)
 
@@ -92,28 +110,9 @@ def sendPacket(data, sock, dataId, dataSequence, dataType, addr):
         packet = packet[:-1]
     
     utility.createPacketWithChecksum(packet, checksum)
-    
 
-    # Run sending files
-    for i in range(10):
-        # Sending file procedure
-        sent_packet = bytes(packet)
-        sock.sendto(bytes(packet), addr)
-        message = 0xFF
-        message, sender_addr = sock.recvfrom(utility.MAX_PACKET_SIZE)
-        print()
-        
-        if message != 0xFF:
-            if utility.getPacketType(message) == dataType + 1:
-                return message
-            else:
-                print("Packet id:", dataId, "sequence: ", dataSequence, "not acknowledged")
-                time.sleep(2)
-        else:
-            print("Packet id:", dataId, "sequence: ", dataSequence, "not received")
-            time.sleep(2)
-    
-    # print("Packet id:", dataId, "; sequence:", dataSequence, "sent")
+    return packet
+
 
 
 # Configuring IP address and port

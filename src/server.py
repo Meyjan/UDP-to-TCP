@@ -132,7 +132,7 @@ def socketListening(packet, addr):
 #----------------------------------------------------------------------------------------------------------------#
 # Main program
 
-UDP_IP = "127.0.0.1"
+UDP_IP = "192.168.43.33"
 print("Socket Configured, IP = ", UDP_IP)
 UDP_PORT = int(input("Masukkan port:"))
 
