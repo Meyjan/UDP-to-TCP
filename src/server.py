@@ -9,18 +9,15 @@ import utility
 port_pool = [5001, 5002, 5003, 5004, 5005, 5006, 5007, 5008, 5009, 5010, 5011, 5012, 5013, 5014, 5015, 5016, 5017, 5018, 5019, 5020]
 
 # Process that a thread should do once receiving a data from outside
-def socketListening(packet, addr):
+def socketListening(UDP_IP, packet, addr):
     # Socket listenting 
     print("Socket listening addr", addr)
     end = False
 
-    # Getting packet and address of sender
-    UDP_IP = addr[0]
-    UDP_PORT = addr[1]
+    # Getting packet and address of sender  
     nextPacket = packet
 
     newSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    newSock.settimeout(5)
 
     # try:
     dataId = utility.getPacketID(packet)
@@ -35,7 +32,10 @@ def socketListening(packet, addr):
         print("Cannot bind socket")
     else:
         readyPort = port_pool.pop(0)
-        newSock.bind((UDP_IP, readyPort))
+        print(readyPort)
+        address = (UDP_IP, readyPort)
+        print(address)
+        newSock.bind(address)
         print("Created port on:", readyPort)
 
     nextAddr = addr
@@ -70,8 +70,6 @@ def socketListening(packet, addr):
     if utility.getPacketType(nextPacket) == 0:
 
         while not end:
-            print("Data Received. id = ", utility.getPacketID(nextPacket), "sequence = ", utility.getPacketSequenceNumber(nextPacket))
-
             checksum = utility.getChecksum(nextPacket)
             packetArray = bytearray(nextPacket)
             packetArray[5] = 0x00
@@ -92,8 +90,6 @@ def socketListening(packet, addr):
 
     end = False
     while not end:
-        print("Data Received. id = ", utility.getPacketID(nextPacket), "sequence = ", utility.getPacketSequenceNumber(nextPacket))
-
         checksum = utility.getChecksum(nextPacket)
         packetArray = bytearray(nextPacket)
         packetArray[5] = 0x00
@@ -117,7 +113,7 @@ def socketListening(packet, addr):
     file.write(bytes(copiedFile))
     file.close()
 
-    if readyPort == 0:
+    if readyPort != 0:
         port_pool.append(readyPort)
         
     # except:
@@ -132,7 +128,7 @@ def socketListening(packet, addr):
 #----------------------------------------------------------------------------------------------------------------#
 # Main program
 
-UDP_IP = "192.168.43.33"
+UDP_IP = "192.168.43.46"
 print("Socket Configured, IP = ", UDP_IP)
 UDP_PORT = int(input("Masukkan port:"))
 
@@ -156,7 +152,7 @@ while True:
     try:
         print("Main socket is ready...")
         data, addr = sock.recvfrom(utility.MAX_PACKET_SIZE)
-        socketThread = threading.Thread(target=socketListening, args=(data, addr))
+        socketThread = threading.Thread(target=socketListening, args=(UDP_IP, data, addr))
         socketThread.start()
         time.sleep(1)
     
