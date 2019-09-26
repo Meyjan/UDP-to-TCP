@@ -42,36 +42,58 @@ def sendFile(arr_file, UDP_IP, UDP_PORT, dataId):
     
     print("Socket is set")
     
-    if (data == )
-    # Sending file name
-    packet = createPacket(TYPE_DATA,dataId,0,bytearray(fileName,"utf-8"))
-    message = sendPacket(TYPE_DATA, packet, sock, (UDP_IP, UDP_PORT))
-    print("Package is sending")
-    target_port = utility.getData(message)
-    target_port = int(target_port[0]) * 256 + int(target_port[1])
-     
-    print("Received target port:", target_port)
+    i = 0
+    while i < 5:
+        try:
+            # Sending file name
+            packet = createPacket(TYPE_DATA,dataId,0,bytearray(fileName,"utf-8"))
+            message = sendPacket(TYPE_DATA, packet, sock, (UDP_IP, UDP_PORT))
+            print("Package is sending")
+            target_port = utility.getData(message)
+            target_port = int(target_port[0]) * 256 + int(target_port[1])
+            i = 5
+        except:
+            print("Socket timeout")
+            print("Cannot get response from the server regarding target port")
+            time.sleep(2)
+            i += 1
+
+    if i < 5:
+        print("Received target port:", target_port)
+    else:
+        print("Receiver doesn't give port for communication")
+        return 0
+    
 
     # Initial call to print 0% progress
     utility.printProgressBar(0, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
-    if (len(dataArray) <= 1):
-        sendPacket(dataArray[0], sock, dataId, 0, TYPE_FIN, (UDP_IP, target_port))
-        # Update Progress Bar
-        time.sleep(0.1)
-        utility.printProgressBar(manyPacket, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
-    else:
-        sendPacket(dataArray[0], sock, dataId, 0, TYPE_DATA, (UDP_IP, target_port))
-        for i in range(1, len(dataArray) - 1):
-            sendPacket(dataArray[i], sock, dataId, i, TYPE_DATA, (UDP_IP, target_port))
+    i = 0
+    while (i < len(dataArray) - 1):
+        try:
+            packet = createPacket(TYPE_DATA, dataId, i, dataArray[i])
+            sendPacket(TYPE_DATA, packet, sock, (UDP_IP, target_port))
             # Update Progress Bar
             time.sleep(0.1)
             utility.printProgressBar(i + 1, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
-
-        sendPacket(dataArray[len(dataArray) - 1], sock, dataId, len(dataArray) - 1, TYPE_FIN, (UDP_IP, target_port))
+            i += 1
+        except:
+            print("Socket timeout")
+            print("Error package sending at id =", dataId, "and sequence =", i, " -- Sending package again")
+            time.sleep(1)
+        
+    try:
+        packet = createPacket(TYPE_FIN, dataId, (len(dataArray) - 1), dataArray[len(dataArray) - 1])
+        sendPacket(TYPE_FIN, packet, sock, (UDP_IP, target_port))
         # Update Progress Bar
         time.sleep(0.1)
-        utility.printProgressBar(manyPacket, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        utility.printProgressBar(i + 1, manyPacket, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        i += 1
+    except:
+        print("Socket timeout")
+        print("Error package sending at id =", dataId, "and sequence =", (len(dataArray) - 1), " -- Sending package again")
+        time.sleep(1)
+
     sock.close()
 
     
